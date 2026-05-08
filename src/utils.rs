@@ -147,7 +147,13 @@ pub async fn download_text(
     ui: &DownloadBar,
 ) -> Option<String> {
     ui.log_info("downloading podcast xml");
-    let response = match client.get(url).send().await {
+    let response = match client
+        .get(url)
+        .header(reqwest::header::ACCEPT, "application/rss+xml, application/xml, text/xml, */*")
+        .header(reqwest::header::ACCEPT_LANGUAGE, "en-US,en;q=0.9")
+        .send()
+        .await
+    {
         Ok(res) => res,
         Err(e) => {
             ui.log_error(&format!("connection failure: {:?}", e));

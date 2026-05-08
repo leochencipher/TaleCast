@@ -483,8 +483,9 @@ impl<'a> DownloadedEpisode<'a> {
                     new_name.pop();
                 }
 
-                let mut new_path = self.path.with_file_name(new_name);
-                new_path.set_extension(extension);
+                let new_path = self.path.with_file_name(
+                    format!("{}.{}", new_name, extension.to_string_lossy()),
+                );
                 new_path
             }
             None => self.path.with_file_name(new_name),
