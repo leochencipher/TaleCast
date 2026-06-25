@@ -243,18 +243,29 @@ async fn main() {
         }
 
         Action::Sync { filter, print } => {
-            let paths = PodcastConfigs::load()
+            let per_podcast = PodcastConfigs::load()
                 .assert_not_empty()
                 .filter(filter)
                 .sync(global_config, &log_path)
                 .await;
 
-            eprintln!("Syncing complete!");
-            eprintln!("{} episodes downloaded.", paths.len());
+            let total: usize = per_podcast.values().map(|v| v.len()).sum();
+            eprintln!("Syncing complete! {} episodes downloaded.", total);
+
+            let mut names: Vec<&String> = per_podcast.keys().collect();
+            names.sort();
+            for name in &names {
+                let count = per_podcast[*name].len();
+                if count > 0 {
+                    eprintln!("  {}: {} episode{}", name, count, if count == 1 { "" } else { "s" });
+                }
+            }
 
             if print {
-                for path in paths {
-                    println!("{}", path.to_str().unwrap());
+                for paths in per_podcast.values() {
+                    for path in paths {
+                        println!("{}", path.to_str().unwrap());
+                    }
                 }
             }
         }

@@ -571,7 +571,7 @@ fn init_reqwest_client(config: &GlobalConfig) -> Arc<reqwest::Client> {
 pub struct PodcastConfigs(HashMap<String, PodcastConfig>);
 
 impl PodcastConfigs {
-    pub async fn sync(self, global_config: GlobalConfig, log_file: &Path) -> Vec<PathBuf> {
+    pub async fn sync(self, global_config: GlobalConfig, log_file: &Path) -> HashMap<String, Vec<PathBuf>> {
         eprintln!("syncing {} podcasts", self.len());
         log::info!("syncing podcasts..");
 
@@ -580,7 +580,7 @@ impl PodcastConfigs {
         let client = init_reqwest_client(&global_config);
 
         let Some(longest_name) = self.longest_name() else {
-            return vec![];
+            return HashMap::new();
         };
 
         let error_occured = Arc::new(AtomicBool::new(false));
@@ -596,23 +596,23 @@ impl PodcastConfigs {
                 let val = error_occured.clone();
 
                 tokio::task::spawn(async move {
-                    match Podcast::new(name, config, &global_config, client, &ui).await {
+                    let paths = match Podcast::new(name.clone(), config, &global_config, client, &ui).await {
                         Ok(podcast) => podcast.sync(&mut ui).await,
                         Err(e) => {
                             ui.error(&e);
                             val.store(true, Ordering::SeqCst);
                             vec![]
                         }
-                    }
+                    };
+                    (name, paths)
                 })
             })
             .collect::<Vec<_>>();
 
-        let paths: Vec<PathBuf> = future::join_all(futures)
+        let per_podcast: HashMap<String, Vec<PathBuf>> = future::join_all(futures)
             .await
             .into_iter()
             .filter_map(Result::ok)
-            .flatten()
             .collect();
 
         if let Some(p) = global_config.log().path() {
@@ -624,7 +624,7 @@ impl PodcastConfigs {
             }
         }
 
-        paths
+        per_podcast
     }
 
     pub fn load() -> Self {

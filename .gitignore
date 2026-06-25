@@ -1,3 +1,4 @@
 /target
 result
 default.nix
+/.agent-shell/
